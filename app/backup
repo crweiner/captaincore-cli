@@ -65,7 +65,7 @@ run_command() {
     fi
 
     # Load site configs
-    while read site_configs; do declare "$site_configs"; done <<< "$(captaincore site get $site --bash --captain_id=$captain_id)"
+    while read site_configs; do if [[ $site_configs == "" ]]; then continue; fi; declare "$site_configs"; done <<< "$(captaincore site get $site --bash --captain_id=$captain_id)"
 
     # Site found, start the backup
     if [[ $domain == "" ]]; then
@@ -115,7 +115,7 @@ run_command() {
 
       # Database backup (if remote server available)
       if [[ "$provider" == "kinsta" ]] || [[ "$provider" == "wpengine" ]]; then
-        captaincore ssh $site --command="wp db export --skip-plugins --skip-themes --add-drop-table --default-character-set=utf8mb4 - > wp-content/mysql.sql; chmod 600 wp-content/mysql.sql" --captain_id=$captain_id
+        captaincore ssh $site --script="db-backup" --captain_id=$captain_id
       fi
 
     fi
@@ -176,8 +176,12 @@ run_command() {
         wp post meta update $id visits_staging "$visits"
       fi
 
+      if [[ "$captaincore_dev" == true ]]; then
+        curl_argument="-k"
+      fi
+
       # Post folder size bytes and yearly visits to ACF fields
-      curl --request POST "$captaincore_api" --header "Content-Type: application/json" --data @- << EOF
+      curl ${curl_argument} --request POST "$captaincore_api" --header "Content-Type: application/json" --data @- << EOF
 {
 "command":"usage-update",
 "site_id":"$site_id",

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 #
-#   Deploys assigned default users for a site
+#   Deploys assigned default recipes for a site
 #
-#   `captaincore site deploy-users [<site>...]`
+#   `captaincore site deploy-recipes [<site>...]`
 #
 
 # Load configuration
@@ -24,27 +24,11 @@ run_command() {
     # Load site configs
     while read site_configs; do if [[ $site_configs == "" ]]; then continue; fi; declare "$site_configs"; done <<< "$(captaincore site get $site --bash --captain_id=$captain_id)"
 
-    # If website on Kinsta then prepare their format
-    if [[ "$provider" == "kinsta" ]]; then
-
-      # Kinsta's command prep
-      command_prep="cd public/ &&"
-
-    fi
-
-    if [[ "$provider" == "wpengine" ]]; then
-
-      # WP Engine's command prep
-      command_prep="rm ~/.wp-cli/config.yml; cd sites/* &&"
-
-    fi
-
-    wp_cli_commands=$( captaincore site fetch-default-users ${site}-${environment} --captain_id=$captain_id )
-
-    captaincore ssh-runner ${site}-${environment} --direct << EOF
-$command_prep
-$wp_cli_commands
-EOF
+    recipes=($( captaincore site fetch-default-recipes ${site}-${environment} --captain_id=$captain_id ))
+    for recipe in ${recipes[@]}; do
+        echo "Deploying recipe #${recipe}"
+        captaincore ssh ${site}-${environment} --recipe=$recipe --captain_id=$captain_id
+    done
 
   done
 }
